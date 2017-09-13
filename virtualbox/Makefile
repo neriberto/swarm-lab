@@ -1,13 +1,18 @@
+token=0123456789abcdef
+
 default:
 	@docker-machine ls
 
 swarm:
-	@docker-machine create -d virtualbox manager
-	@docker-machine create -d virtualbox worker-01
-	@docker-machine create -d virtualbox worker-02
-init:
-	@eval $(docker-machine env manager)
-	@docker swarm init --advertise-addr `(docker-machine ip manager)`
+	@docker-machine create -d virtualbox --swarm --swarm-master --swarm-discovery token://${token} manager
+	@docker-machine create -d virtualbox --swarm --swarm-discovery token://${token} worker-01
+	@docker-machine create -d virtualbox --swarm --swarm-discovery token://${token} worker-02
+	@eval $$(docker-machine env manager) && docker swarm init --advertise-addr `(docker-machine ip manager)`
+
+join:
+	@eval $$(docker-machine env worker-01) && docker swarm join --token ${token} `(docker-machine ip manager)`:2377
+	@eval $$(docker-machine env worker-02) && docker swarm join --token ${token} `(docker-machine ip manager)`:2377
+	@eval $$(docker-machine env manager) && docker node promote worker-01 worker-02
 
 uninstall:
 	@docker-machine rm manager worker-01 worker-02
